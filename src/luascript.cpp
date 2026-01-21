@@ -2673,6 +2673,9 @@ void LuaScriptInterface::registerFunctions() {
 	registerMethod(L, "Player", "sendTutorial", LuaScriptInterface::luaPlayerSendTutorial);
 	registerMethod(L, "Player", "addMapMark", LuaScriptInterface::luaPlayerAddMapMark);
 
+	registerMethod(L, "Player", "getStorageValue", LuaScriptInterface::luaPlayerGetStorageValue);
+	registerMethod(L, "Player", "setStorageValue", LuaScriptInterface::luaPlayerSetStorageValue);
+
 	registerMethod(L, "Player", "save", LuaScriptInterface::luaPlayerSave);
 	registerMethod(L, "Player", "popupFYI", LuaScriptInterface::luaPlayerPopupFYI);
 
@@ -3150,9 +3153,6 @@ void LuaScriptInterface::registerFunctions() {
 	registerMethod(L, "Party", "isSharedExperienceEnabled", LuaScriptInterface::luaPartyIsSharedExperienceEnabled);
 	registerMethod(L, "Party", "shareExperience", LuaScriptInterface::luaPartyShareExperience);
 	registerMethod(L, "Party", "setSharedExperience", LuaScriptInterface::luaPartySetSharedExperience);
-
-	registerMethod("Player", "setStorageValue", LuaScriptInterface::luaPlayerSetStorageValue);
-	registerMethod("Player", "getStorageValue", LuaScriptInterface::luaPlayerGetStorageValue);
 
 	// Spells
 	registerClass(L, "Spell", "", LuaScriptInterface::luaSpellCreate);
@@ -8194,25 +8194,6 @@ int LuaScriptInterface::luaCreatureGetZone(lua_State* L) {
 	return 1;
 }
 
-int LuaScriptInterface::luaPlayerGetStorageValue(lua_State* L)
-{
-	// player:getStorageValue(key)
-	Player* player = getUserdata<Player>(L, 1);
-	if (!player) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	uint32_t key = getNumber<uint32_t>(L, 2);
-	int32_t value;
-	if (player->getStorageValue(key, value)) {
-		lua_pushnumber(L, value);
-	} else {
-		lua_pushnumber(L, -1);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaCreatureGetStorageValue(lua_State* L) {
 	// creature:getStorageValue(key)
 	Creature* creature = lua::getUserdata<Creature>(L, 1);
@@ -9216,29 +9197,6 @@ int LuaScriptInterface::luaPlayerSetBankBalance(lua_State* L) {
 	return 1;
 }
 
-int LuaScriptInterface::luaPlayerSetStorageValue(lua_State* L)
-{
-	// player:setStorageValue(key, value)
-	int32_t value = getNumber<int32_t>(L, 3);
-	uint32_t key = getNumber<uint32_t>(L, 2);
-	Player* player = getUserdata<Player>(L, 1);
-	if (IS_IN_KEYRANGE(key, RESERVED_RANGE)) {
-		std::ostringstream ss;
-		ss << "Accessing reserved range: " << key;
-		reportErrorFunc(ss.str());
-		pushBoolean(L, false);
-		return 1;
-	}
-
-	if (player) {
-		player->addStorageValue(key, value);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaPlayerAddItem(lua_State* L) {
 	// player:addItem(itemId[, count = 1[, canDropOnMap = true[, subType = 1[, slot = CONST_SLOT_WHEREEVER]]]])
 	Player* player = lua::getUserdata<Player>(L, 1);
@@ -9973,6 +9931,47 @@ int LuaScriptInterface::luaPlayerAddMapMark(lua_State* L) {
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerGetStorageValue(lua_State* L) {
+	// player:getStorageValue(key)
+	Player* player = lua::getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t key = lua::getNumber<uint32_t>(L, 2);
+	if (auto storage = player->getStorageValue(key)) {
+		lua_pushnumber(L, storage.value());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerSetStorageValue(lua_State* L) {
+	// player:setStorageValue(key, value)
+	Player* player = lua::getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t key = lua::getNumber<uint32_t>(L, 2);
+	if (IS_IN_KEYRANGE(key, RESERVED_RANGE)) {
+		reportErrorFunc(L, fmt::format("Accessing reserved range: {:d}", key));
+		lua::pushBoolean(L, false);
+		return 1;
+	}
+
+	int32_t value = lua::getNumber<int32_t>(L, 3);
+	player->setStorageValue(key, value);
+	
+	// Auto-save player data to database
+	player->loginPosition = player->getPosition();
+	lua::pushBoolean(L, IOLoginData::savePlayer(player));
 	return 1;
 }
 
