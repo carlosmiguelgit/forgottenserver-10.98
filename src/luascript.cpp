@@ -9976,7 +9976,7 @@ int LuaScriptInterface::luaPlayerSetStorageValue(lua_State* L) {
 
 int LuaScriptInterface::luaPlayerSave(lua_State* L) {
 	// player:save()
-	Player* player = lua::getUserdata<Player>(L, 1);
+	Player* player = lua::getUserData<Player>(L, 1);
 	if (player) {
 		lua::pushBoolean(L, IOLoginData::savePlayer(player));
 	} else {
