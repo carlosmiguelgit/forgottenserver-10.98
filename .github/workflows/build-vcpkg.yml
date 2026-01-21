@@ -8,55 +8,29 @@ on:
         required: true
         default: "all"
         type: choice
-        options:
-          - all
-          - ubuntu
-          - macos
-          - windows
+        options: [all, ubuntu, macos, windows]
       buildtype:
         description: "Build type"
         required: true
         default: "all"
         type: choice
-        options:
-          - all
-          - Debug
-          - Release
+        options: [all, Debug, Release]
       luajit:
         description: "Use LuaJIT"
         required: true
         default: "all"
         type: choice
-        options:
-          - all
-          - on
-          - off
+        options: [all, on, off]
 
   push:
-    branches:
-      - master
-      - v*
-    paths:
-      - .github/workflows/build-vcpkg.yml
-      - cmake/**
-      - src/**
-      - CMakeLists.txt
-      - CMakePresets.json
-      - vcpkg.json
+    branches: [master, v*]
 
   pull_request:
-    paths:
-      - .github/workflows/build-vcpkg.yml
-      - cmake/**
-      - src/**
-      - CMakeLists.txt
-      - CMakePresets.json
-      - vcpkg.json
 
 jobs:
   build-vcpkg:
-    name: ${{ matrix.os }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}
     runs-on: ${{ matrix.os }}-latest
+    name: ${{ matrix.os }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}
 
     strategy:
       fail-fast: false
@@ -68,26 +42,28 @@ jobs:
     env:
       VCPKG_BUILD_TYPE: release
 
-    if: |
-      (github.event_name != 'workflow_dispatch') ||
-      (
-        (github.event.inputs.os == 'all' || github.event.inputs.os == matrix.os) &&
-        (github.event.inputs.buildtype == 'all' || github.event.inputs.buildtype == matrix.buildtype) &&
-        (github.event.inputs.luajit == 'all' || github.event.inputs.luajit == matrix.luajit)
-      )
-
     steps:
+      - name: Check matrix vs workflow_dispatch inputs
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          !(
+            (github.event.inputs.os == 'all' || github.event.inputs.os == matrix.os) &&
+            (github.event.inputs.buildtype == 'all' || github.event.inputs.buildtype == matrix.buildtype) &&
+            (github.event.inputs.luajit == 'all' || github.event.inputs.luajit == matrix.luajit)
+          )
+        run: exit 0
+
       - uses: actions/checkout@v4
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
+        if: matrix.os == 'ubuntu' && matrix.buildtype == 'Debug'
         with:
           languages: cpp
           queries: +security-extended,security-and-quality
           config: |
             paths-ignore:
               - 'vcpkg/**'
-        if: ${{ matrix.os == 'ubuntu' && matrix.buildtype == 'Debug' }}
 
       - name: Get latest CMake
         uses: lukka/get-cmake@latest
@@ -95,7 +71,7 @@ jobs:
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v11
 
-      - name: Configure & Build with CMake
+      - name: Configure & Build
         uses: lukka/run-cmake@v10
         with:
           configurePreset: vcpkg
@@ -105,32 +81,20 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:cpp"
-        if: ${{ matrix.os == 'ubuntu' && matrix.buildtype == 'Debug' }}
+        if: matrix.os == 'ubuntu' && matrix.buildtype == 'Debug'
 
-      - name: Upload artifact binary
+      - name: Upload artifact (Linux / macOS)
+        if: matrix.os != 'windows'
         uses: actions/upload-artifact@v4
-        if: ${{ !startsWith(matrix.os, 'windows') }}
         with:
-          name: tfs-${{ matrix.os }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
+          name: tfs-${{ matrix.os }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}
           path: ${{ runner.workspace }}/build/${{ matrix.buildtype }}/tfs
 
-      - name: Upload artifact binary (Windows)
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows'
         uses: actions/upload-artifact@v4
-        if: ${{ startsWith(matrix.os, 'windows') }}
         with:
-          name: tfs-${{ matrix.os }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
+          name: tfs-windows-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}
           path: |
             ${{ runner.workspace }}/build/${{ matrix.buildtype }}/tfs.exe
             ${{ runner.workspace }}/build/${{ matrix.buildtype }}/*.dll
-
-      - name: Prepare datapack contents
-        run: find . -maxdepth 1 ! -name data ! -name config.lua.dist ! -name key.pem ! -name LICENSE ! -name README.md ! -name schema.sql -exec rm -r {} \;
-        shell: bash
-
-      - name: Upload datapack contents
-        uses: actions/upload-artifact@v4
-        with:
-          name: datapack-${{ matrix.os }}-${{ matrix.buildtype }}-luajit=${{ matrix.luajit }}-${{ github.sha }}
-          path: ${{ github.workspace }}
