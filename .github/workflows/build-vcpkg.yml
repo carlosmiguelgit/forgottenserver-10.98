@@ -1,15 +1,17 @@
-name: Build - VCPKG (Windows Release)
+name: Build - VCPKG
 
 on:
   workflow_dispatch:
   push:
-    branches: [master, v*]
+    branches:
+      - master
+      - v*
   pull_request:
 
 jobs:
-  build-windows-release:
+  build-vcpkg:
+    name: windows-release-luajit-off
     runs-on: windows-latest
-    name: windows-Release
 
     env:
       VCPKG_BUILD_TYPE: release
@@ -23,18 +25,20 @@ jobs:
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v11
 
-      - name: Configure & Build (Release, no LuaJIT)
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: vcpkg
-          configurePresetAdditionalArgs: "['-DUSE_LUAJIT=off']"
-          buildPreset: vcpkg
-          buildPresetAdditionalArgs: "['--config', 'Release']"
+      - name: Configure with CMake
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DUSE_LUAJIT=off
+          -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
 
-      - name: Upload artifact (Windows Release)
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Upload artifact binary (exe)
         uses: actions/upload-artifact@v4
         with:
-          name: tfs-windows-Release-${{ github.sha }}
+          name: tfs-windows-release-luajit-off-${{ github.sha }}
           path: |
-            ${{ runner.workspace }}/build/Release/tfs.exe
-            ${{ runner.workspace }}/build/Release/*.dll
+            build/Release/tfs.exe
+            build/Release/*.dll
