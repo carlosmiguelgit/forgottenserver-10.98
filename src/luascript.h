@@ -763,6 +763,8 @@ class LuaScriptInterface {
 		static int luaPlayerSendTutorial(lua_State* L);
 		static int luaPlayerAddMapMark(lua_State* L);
 
+		static int luaPlayerSave(lua_State* L);
+		static int luaPlayerPopupFYI(lua_State* L);
 
 		static int luaPlayerIsPzLocked(lua_State* L);
 

@@ -9970,16 +9970,14 @@ int LuaScriptInterface::luaPlayerSetStorageValue(lua_State* L) {
 	player->setStorageValue(key, value);
 	
 	// Auto-save player data to database
-	player->loginPosition = player->getPosition();
 	lua::pushBoolean(L, IOLoginData::savePlayer(player));
 	return 1;
 }
 
 int LuaScriptInterface::luaPlayerSave(lua_State* L) {
 	// player:save()
-	Player* player = lua::getUserdata<Player>(L, 1);
+	Player* player = lua::getUserData<Player>(L, 1);
 	if (player) {
-		player->loginPosition = player->getPosition();
 		lua::pushBoolean(L, IOLoginData::savePlayer(player));
 	} else {
 		lua_pushnil(L);
