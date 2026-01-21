@@ -3,9 +3,7 @@ name: Build - VCPKG
 on:
   workflow_dispatch:
   push:
-    branches:
-      - master
-      - v*
+    branches: [master]
   pull_request:
 
 jobs:
@@ -15,7 +13,7 @@ jobs:
 
     env:
       VCPKG_BUILD_TYPE: release
-      # Define onde o vcpkg vai guardar os binários compilados para o cache
+      # Define onde o vcpkg vai buscar/salvar os pacotes já compilados (.zip)
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
 
     steps:
@@ -24,36 +22,40 @@ jobs:
       - name: Get latest CMake
         uses: lukka/get-cmake@latest
 
-      # --- NOVO: Configuração de Cache ---
+      # 1. Recupera o cache do GitHub
       - name: Restore vcpkg binary cache
+        id: cache-vcpkg
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/vcpkg_cache
-          # O cache é invalidado se o vcpkg.json ou o vcpkg-configuration.json mudar
-          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          # A chave muda apenas se o vcpkg.json mudar
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
             ${{ runner.os }}-vcpkg-
 
+      # 2. Garante que a pasta do cache existe para evitar erros
       - name: Create vcpkg cache directory
         run: mkdir -p ${{ github.workspace }}/vcpkg_cache
 
+      # 3. Executa o vcpkg (ele vai notar que a env VCPKG_DEFAULT_BINARY_CACHE existe)
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          # Garante que ele use o cache que configuramos acima
           vcpkgJsonGlob: 'vcpkg.json'
 
+      # 4. Configuração com o Toolchain correto
       - name: Configure with CMake
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
           -DUSE_LUAJIT=off
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static
           -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Upload artifact binary (exe)
+      - name: Upload artifact binary
         uses: actions/upload-artifact@v4
         with:
           name: tfs-windows-release-luajit-off-${{ github.sha }}
