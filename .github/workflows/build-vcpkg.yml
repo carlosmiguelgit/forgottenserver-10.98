@@ -23,11 +23,11 @@ jobs:
       - name: Run vcpkg
         uses: lukka/run-vcpkg@v11
 
-      - name: Configure & Build (Release)
+      - name: Configure & Build (Release, no LuaJIT)
         uses: lukka/run-cmake@v10
         with:
           configurePreset: vcpkg
-          configurePresetAdditionalArgs: "['-DUSE_LUAJIT=on']"
+          configurePresetAdditionalArgs: "['-DUSE_LUAJIT=off']"
           buildPreset: vcpkg
           buildPresetAdditionalArgs: "['--config', 'Release']"
 
