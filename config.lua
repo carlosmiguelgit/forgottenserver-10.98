@@ -20,7 +20,7 @@ expFromPlayersLevelRange = 75
 -- NOTE: maxPlayers set to 0 means no limit
 -- NOTE: allowWalkthrough is only applicable to players
 -- NOTE: statusCountMaxPlayersPerIp allows you to only count up to X players per IP in status response (0 = disabled)
-ip = "127.0.0.1"
+ip = "172.17.7.35"
 bindOnlyGlobalAddress = false
 loginProtocolPort = 7171
 gameProtocolPort = 7172
@@ -76,9 +76,9 @@ maxMarketOffersAtATimePerPlayer = 100
 
 -- MySQL
 mysqlHost = "127.0.0.1"
-mysqlUser = "forgottenserver"
-mysqlPass = ""
-mysqlDatabase = "forgottenserver"
+mysqlUser = "ot"
+mysqlPass = "123"
+mysqlDatabase = "142old"
 mysqlPort = 3306
 mysqlSock = ""
 

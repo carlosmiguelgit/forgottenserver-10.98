@@ -48,7 +48,7 @@ endif()
 # LIB MariaDB or LIB MySQL
 # Look for vcpkg-provided libmariadb first
 # When we link to the file directly, we might miss its dependencies from vcpkg
-option(USE_LIBMYSQL "Use libmysql instead of libmariadb" OFF)
+option(USE_LIBMYSQL "Use libmysql instead of libmariadb" ON)
 
 if(USE_LIBMYSQL)
 	list(APPEND VCPKG_MANIFEST_FEATURES "libmysql")
